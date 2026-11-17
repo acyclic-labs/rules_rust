@@ -16,7 +16,6 @@ use crate::lockfile::{lock_context, write_lockfile};
 use crate::metadata::{load_metadata, Annotations, Cargo, SourceAnnotation};
 use crate::rendering::{write_outputs, Renderer};
 use crate::splicing::SplicingManifest;
-use crate::utils::normalize_cargo_file_paths;
 use crate::utils::starlark::Label;
 
 /// Command line options for the `generate` subcommand
@@ -305,8 +304,14 @@ fn render_and_write_outputs(
     dry_run: bool,
 ) -> Result<()> {
     let rendered = renderer.render_hub(context, generator)?;
-    let normalized_outputs = normalize_cargo_file_paths(rendered.files, repository_dir);
-    write_outputs(normalized_outputs, dry_run)?;
+    write_outputs(
+        rendered
+            .files
+            .into_iter()
+            .map(|(path, content)| (repository_dir.join(path), content))
+            .collect(),
+        dry_run,
+    )?;
     write_hub_packages(hub_packages_output_path, &rendered.hub_packages)?;
     Ok(())
 }

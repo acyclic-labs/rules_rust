@@ -49,16 +49,17 @@ pub(crate) fn normalize_cargo_file_paths(
             // have nothing pre-created on disk; leave their paths alone so
             // the directory and the alias name stay in sync.
             let src = out_dir.join(original_parent_path_str);
-            let path = if original_parent_path_str.contains('+') && src.exists() {
-                std::fs::rename(
-                    src,
-                    out_dir.join(sanitize_repository_name(original_parent_path_str)),
-                )
-                .expect("Could not rename paths");
-                PathBuf::from(&original_path_str.replace('+', "-"))
-            } else {
-                path
-            };
+            let path =
+                if path.is_relative() && original_parent_path_str.contains('+') && src.exists() {
+                    std::fs::rename(
+                        src,
+                        out_dir.join(sanitize_repository_name(original_parent_path_str)),
+                    )
+                    .expect("Could not rename paths");
+                    PathBuf::from(&original_path_str.replace('+', "-"))
+                } else {
+                    path
+                };
 
             // In recent versions of Bazel, canonical repository paths may contain (+)
             // symbols so it is important to apply the transformation only to `outputs`
@@ -116,5 +117,24 @@ mod test {
         for output in got.into_keys() {
             assert!(!output.to_str().unwrap().contains('+'));
         }
+    }
+
+    #[test]
+    fn absolute_source_paths_are_not_vendored_directories() {
+        let root = tempfile::tempdir().unwrap();
+        let source = root.path().join("external/canonical+repository/crate");
+        std::fs::create_dir_all(&source).unwrap();
+        let file = source.join("BUILD.bazel");
+        std::fs::write(&file, "original source").unwrap();
+        let output = tempfile::tempdir().unwrap();
+        let rendered = normalize_cargo_file_paths(
+            BTreeMap::from([(file.clone(), "rendered".into())]),
+            output.path(),
+        );
+        assert_eq!(
+            rendered,
+            BTreeMap::from([(file.clone(), "rendered".into())])
+        );
+        assert_eq!(std::fs::read_to_string(file).unwrap(), "original source");
     }
 }
