@@ -299,6 +299,14 @@ def toolchain_linker_preference():
     )
 
 # buildifier: disable=unnamed-macro
+def clippy_driver():
+    """When set, the Rust compile action runs through clippy-driver, so lints are part of compilation."""
+    bool_flag(
+        name = "clippy_driver",
+        build_setting_default = False,
+    )
+
+# buildifier: disable=unnamed-macro
 def clippy_toml():
     """This setting is used by the clippy rules. See https://bazelbuild.github.io/rules_rust/rust_clippy.html
 

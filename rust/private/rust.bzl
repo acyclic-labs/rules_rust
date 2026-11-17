@@ -693,6 +693,13 @@ RUSTC_ATTRS = {
     "_always_enable_metadata_output_groups": attr.label(
         default = Label("//rust/settings:always_enable_metadata_output_groups"),
     ),
+    "_clippy_config": attr.label(
+        allow_single_file = True,
+        default = Label("//rust/settings:clippy.toml"),
+    ),
+    "_clippy_driver": attr.label(
+        default = Label("//rust/settings:clippy_driver"),
+    ),
     "_error_format": attr.label(
         default = Label("//rust/settings:error_format"),
     ),
@@ -745,6 +752,10 @@ _COMMON_ATTRS = {
             This attribute is used by the C++ Starlark API when passing CcInfo providers.
         """),
         default = False,
+    ),
+    "clippy_config": attr.label(
+        allow_single_file = True,
+        doc = "The clippy.toml used for this crate's compile-time lints. Defaults to the toolchain-wide clippy.toml.",
     ),
     "compile_data": attr.label_list(
         doc = dedent("""\

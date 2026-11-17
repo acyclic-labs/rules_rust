@@ -643,9 +643,19 @@ def _generate_hub_and_spokes(
             splicing_manifest = splicing_manifest,
         )
 
-    # The workspace root when one is explicitly provided.
+    # Relative package paths belong to the repository supplying the manifests,
+    # which may be an owned source projection rather than the root module.
+    roots = {}
+    for manifest in cfg.manifests if hasattr(cfg, "manifests") else []:
+        root = module_ctx.path(manifest).realpath
+        for _ in (manifest.package + "/" + manifest.name).strip("/").split("/"):
+            root = root.dirname
+        roots[str(root)] = root
+    if len(roots) > 1:
+        fail("crate.from_cargo manifests must share a repository root; relative package paths have no unique origin")
+    # from_specs has no manifest paths and resolves in the root module.
     # buildifier: disable=canonical-repository
-    nonhermetic_root_bazel_workspace_dir = module_ctx.path(Label("@@//:MODULE.bazel")).dirname
+    nonhermetic_root_bazel_workspace_dir = roots.values()[0] if roots else module_ctx.path(Label("@@//:MODULE.bazel")).dirname
 
     # If re-pinning is enabled, gather additional inputs for the generator
     kwargs = dict()
