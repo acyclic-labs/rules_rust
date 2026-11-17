@@ -1809,6 +1809,11 @@ def rustc_compile_action(
         **crate_info_dict
     )
 
+    clippy_driver = getattr(ctx.attr, "_clippy_driver", None)
+    use_clippy = clippy_driver != None and clippy_driver[BuildSettingInfo].value
+    if use_clippy and not toolchain.clippy_driver:
+        fail("--@rules_rust//rust/settings:clippy_driver requires a toolchain with clippy-driver")
+
     build_metadata = crate_info.metadata
     rustc_output = crate_info.rustc_output
     rustc_rmeta_output = crate_info.rustc_rmeta_output
@@ -1851,6 +1856,9 @@ def rustc_compile_action(
     if hasattr(ctx.attr, "lint_config") and ctx.attr.lint_config:
         rust_flags = rust_flags + ctx.attr.lint_config[LintsInfo].rustc_lint_flags
         lint_files = lint_files + ctx.attr.lint_config[LintsInfo].rustc_lint_files
+        if use_clippy:
+            rust_flags = rust_flags + ctx.attr.lint_config[LintsInfo].clippy_lint_flags
+            lint_files = lint_files + ctx.attr.lint_config[LintsInfo].clippy_lint_files
 
     profiling_dir, profiling_flags = setup_zself_profile(ctx, crate_info)
     rust_flags = rust_flags + profiling_flags
@@ -1949,7 +1957,7 @@ def rustc_compile_action(
         attr = attr,
         file = ctx.file,
         toolchain = toolchain,
-        tool_file = toolchain.rustc,
+        tool_file = toolchain.clippy_driver if use_clippy else toolchain.rustc,
         cc_toolchain = cc_toolchain,
         emit = emit,
         feature_configuration = feature_configuration,
@@ -2005,6 +2013,12 @@ def rustc_compile_action(
 
     # this is the final list of env vars
     env.update(env_from_args)
+
+    if use_clippy:
+        clippy_config = getattr(ctx.file, "clippy_config", None) or getattr(ctx.file, "_clippy_config", None)
+        if clippy_config:
+            env["CLIPPY_CONF_DIR"] = clippy_config.dirname or "."
+            compile_inputs = depset([clippy_config], transitive = [compile_inputs])
 
     if hasattr(attr, "version") and attr.version != "0.0.0":
         formatted_version = " v{}".format(attr.version)
