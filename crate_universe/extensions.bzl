@@ -647,7 +647,7 @@ def _generate_hub_and_spokes(
     # which may be an owned source projection rather than the root module.
     roots = {}
     for manifest in cfg.manifests if hasattr(cfg, "manifests") else []:
-        root = module_ctx.path(manifest)
+        root = module_ctx.path(manifest).realpath
         for _ in (manifest.package + "/" + manifest.name).strip("/").split("/"):
             root = root.dirname
         roots[str(root)] = root
