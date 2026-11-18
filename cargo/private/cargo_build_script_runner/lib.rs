@@ -84,6 +84,7 @@ impl BuildScriptOutput {
             "rustc-link-lib" => Some(BuildScriptOutput::LinkLib(param)),
             "rustc-link-search" => Some(BuildScriptOutput::LinkSearch(param)),
             "rustc-cfg" => Some(BuildScriptOutput::Cfg(param)),
+            "rustc-check-cfg" => Some(BuildScriptOutput::Flags(format!("--check-cfg={param}"))),
             "rustc-flags" => Some(BuildScriptOutput::Flags(param)),
             "rustc-link-arg" => Some(BuildScriptOutput::LinkArg(param)),
             "rustc-env" => Some(BuildScriptOutput::Env(param)),
@@ -327,6 +328,21 @@ impl BuildScriptOutput {
 mod tests {
     use super::*;
     use std::io::Cursor;
+
+    #[test]
+    fn forwards_check_cfg_as_compile_flags() {
+        let input = concat!(
+            "cargo::rustc-check-cfg=cfg(custom_feature, values(\"enabled\"))\n",
+            "cargo:rustc-check-cfg=cfg(legacy_feature)\n",
+        );
+        let outputs = BuildScriptOutput::outputs_from_reader(Cursor::new(input), true);
+        let flags = BuildScriptOutput::outputs_to_flags(&outputs, "", "");
+        assert_eq!(
+            flags.compile_flags,
+            "--check-cfg=cfg(custom_feature, values(\"enabled\"))\n--check-cfg=cfg(legacy_feature)"
+        );
+        assert!(flags.link_flags.is_empty());
+    }
 
     fn from_read_buffer_to_env_and_flags_test_impl(buff: Cursor<&str>) {
         let reader = BufReader::new(buff);
